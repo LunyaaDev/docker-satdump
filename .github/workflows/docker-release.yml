@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_release.outputs.version }}
+      sha_short: ${{ steps.get_sha.outputs.sha_short }}
+      should_continue: ${{ steps.check.outputs.should_continue }}
     steps:
       - name: Get latest release tag
         id: get_release
@@ -21,17 +23,19 @@ jobs:
           echo "version=$(cat version.txt)" >> $GITHUB_OUTPUT
 
       - name: Declare some variables
+        id: get_sha
         run: |
           sha_hash=${{ github.sha }}
           echo "sha_short="${sha_hash:0:7}"" >> $GITHUB_OUTPUT
 
       - name: Version
         run: |
-          echo "${{ needs.check.outputs.version }}-${{ needs.check.outputs.sha_short }}"
+          echo "${{ steps.get_release.outputs.version }}-${{ steps.get_sha.outputs.sha_short }}"
 
       - name: Check if image already exists
+        id: check
         run: |
-          if docker manifest inspect lunyaadev/satdump:${{ needs.check.outputs.version }}-${{ needs.check.outputs.sha_short }} > /dev/null 2>&1; then
+          if docker manifest inspect lunyaadev/satdump:${{ steps.get_release.outputs.version }}-${{ steps.get_sha.outputs.sha_short }} > /dev/null 2>&1; then
             echo "should_continue=false" >> $GITHUB_OUTPUT
           else
             echo "should_continue=true" >> $GITHUB_OUTPUT
