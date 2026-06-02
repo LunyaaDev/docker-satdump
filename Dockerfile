@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /build
 
-RUN git clone --branch ${SATDUMP_BRANCH} --depth=1 https://github.com/SatDump/SatDump.git
+RUN git clone --branch "${SATDUMP_VERSION}" --depth=1 https://github.com/SatDump/SatDump.git
 
 WORKDIR /build/SatDump
 
