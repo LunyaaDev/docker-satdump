@@ -25,6 +25,10 @@ jobs:
           sha_hash=${{ github.sha }}
           echo "sha_short="${sha_hash:0:7}"" >> $GITHUB_OUTPUT
 
+      - name: Version
+        run: |
+          echo "${{ needs.check.outputs.version }}-${{ needs.check.outputs.sha_short }}"
+
       - name: Check if image already exists
         run: |
           if docker manifest inspect lunyaadev/satdump:${{ needs.check.outputs.version }}-${{ needs.check.outputs.sha_short }} > /dev/null 2>&1; then
