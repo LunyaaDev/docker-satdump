@@ -9,6 +9,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Define build arguments for each platform
+ARG BUILDPLATFORM
 ARG SATDUMP_VERSION=1.2.2
 ARG SATDUMP_RELEASE_FILE_AMD64=satdump_1.2.2_ubuntu_24.04_amd64.deb
 ARG SATDUMP_RELEASE_FILE_ARM64=satdump_1.2.2_arm64.deb
