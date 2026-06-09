@@ -71,21 +71,24 @@ for source_release in source_releases:
     tags = []
     release_file_amd = ''
     release_file_arm = ''
+
+    base_tag = target_registry + '/' + target_repository
+
     if source_release["tag_name"] == 'nightly':
         tags = [
-            'nightly-' + day + '-' + commit_hash_short,
-            'nightly-' + day,
-            'nightly',
+            base_tag + ':nightly-' + day + '-' + commit_hash_short,
+            base_tag + ':nightly-' + day,
+            base_tag + ':nightly',
         ]
         release_file_amd = 'satdump_ubuntu_24.04_amd64.deb'
         release_file_arm = 'satdump_rpi64_latest_arm64.deb'
     else:
         tags = [
-            source_release["tag_name"] + '-' + commit_hash_short,
-            source_release["tag_name"],
+            base_tag + ':' + source_release["tag_name"] + '-' + commit_hash_short,
+            base_tag + ':' + source_release["tag_name"],
         ]
         if is_latest:
-            tags.append('latest')
+            tags.append(base_tag + ':latest')
         # reset is latest to not add "latest" to next release
         is_latest = False
         release_file_amd = 'satdump_' + source_release["tag_name"] + '_ubuntu_24.04_amd64.deb'
