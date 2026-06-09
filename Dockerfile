@@ -1,63 +1,31 @@
-FROM debian:trixie
+FROM --platform=$BUILDPLATFORM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
-
-ARG SATDUMP_VERSION=master
-
-RUN apt-get update && apt-get install -y \
-    git \
-    build-essential \
-    cmake \
-    g++ \
-    pkgconf \
-    libfftw3-dev \
-    libpng-dev \
-    libtiff-dev \
-    libjemalloc-dev \
-    libcurl4-openssl-dev \
-    libsqlite3-dev \
-    libvolk-dev \
-    libnng-dev \
-    libzstd-dev \
-    libhdf5-dev \
-    librtlsdr-dev \
-    libhackrf-dev \
-    libairspy-dev \
-    libairspyhf-dev \
-    libad9361-dev \
-    libiio-dev \
-    libbladerf-dev \
-    libomp-dev \
-    libarmadillo-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
-RUN git clone --branch "${SATDUMP_VERSION}" --depth=1 https://github.com/SatDump/SatDump.git
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-WORKDIR /build/SatDump
+# Define build arguments for each platform
+ARG SATDUMP_VERSION=1.2.2
+ARG SATDUMP_RELEASE_FILE_AMD64=satdump_1.2.2_ubuntu_24.04_amd64.deb
+ARG SATDUMP_RELEASE_FILE_ARM64=satdump_1.2.2_arm64.deb
 
-RUN mkdir build
+# Download and install the correct .deb file based on the build platform
+RUN if [ "$BUILDPLATFORM" = "linux/amd64" ]; then \
+      curl -L -o satdump.deb "https://github.com/SatDump/SatDump/releases/download/${SATDUMP_VERSION}/${SATDUMP_RELEASE_FILE_AMD64}"; \
+    elif [ "$BUILDPLATFORM" = "linux/arm64" ]; then \
+      curl -L -o satdump.deb "https://github.com/SatDump/SatDump/releases/download/${SATDUMP_VERSION}/${SATDUMP_RELEASE_FILE_ARM64}"; \
+    else \
+      echo "Unsupported platform: $BUILDPLATFORM" && exit 1; \
+    fi && \
+    apt-get install -y --no-install-recommends ./satdump.deb && \
+    rm satdump.deb
 
-WORKDIR /build/SatDump/build
-
-RUN cmake \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DBUILD_GUI=OFF \
-    ..
-
-# SatDump recommends -j1 on Raspberry Pi 3
-RUN make -j1
-
-RUN make install
-
-RUN mkdir -p /data
-
-WORKDIR /data
-
-EXPOSE 8080/tcp
-VOLUME /root/.config/satdump/
+# Clean up apt cache again
+RUN rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["satdump"]
 CMD ["--help"]

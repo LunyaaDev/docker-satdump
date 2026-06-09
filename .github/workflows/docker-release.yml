@@ -8,49 +8,38 @@ on:
       - "main"
 
 jobs:
-  check:
+  generate-matrix:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_release.outputs.version }}
-      sha_short: ${{ steps.get_sha.outputs.sha_short }}
-      should_continue: ${{ steps.check.outputs.should_continue }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Get latest release tag
-        id: get_release
-        run: |
-          curl -s https://api.github.com/repos/SatDump/SatDump/releases/latest \
-            | jq -r '.tag_name' > version.txt
-          echo "version=$(cat version.txt)" >> $GITHUB_OUTPUT
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Declare some variables
-        id: get_sha
-        run: |
-          sha_hash=${{ github.sha }}
-          echo "sha_short="${sha_hash:0:7}"" >> $GITHUB_OUTPUT
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
 
-      - name: Version
-        run: |
-          echo "${{ steps.get_release.outputs.version }}-${{ steps.get_sha.outputs.sha_short }}"
+      - name: Install requirements
+        run: pip install -r requirements.txt
 
-      - name: Check if image already exists
-        id: check
+      - name: Run Python script to output JSON matrix
+        id: set-matrix
         run: |
-          if docker manifest inspect lunyaadev/satdump:${{ steps.get_release.outputs.version }}-${{ steps.get_sha.outputs.sha_short }} > /dev/null 2>&1; then
-            echo "should_continue=false" >> $GITHUB_OUTPUT
-          else
-            echo "should_continue=true" >> $GITHUB_OUTPUT
-          fi
+          python3 generate-builds.py > matrix.json
+          matrix=$(jq -c '.' matrix.json)
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
-  build:
+  build-image:
+    needs: generate-matrix
     runs-on: ubuntu-latest
-    needs: check
-    if: needs.check.outputs.should_continue == 'true'
+    strategy:
+      matrix:
+        data: ${{fromJson(needs.generate-matrix.outputs.matrix)}}
+    if: needs.generate-matrix.outputs.matrix != '[]'
     steps:
       - name: Check out
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -68,8 +57,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
-            SATDUMP_VERSION=${{ needs.check.outputs.version }}
-          tags: |
-            lunyaadev/satdump:${{ needs.check.outputs.version }}-${{ needs.check.outputs.sha_short }}
-            lunyaadev/satdump:${{ needs.check.outputs.version }}
-            lunyaadev/satdump:latest
+            SATDUMP_VERSION=${{ matrix.data.version }}
+            SATDUMP_RELEASE_FILE_AMD64=${{ matrix.data.release_file_amd }}
+            SATDUMP_RELEASE_FILE_ARM64=${{ matrix.data.release_file_arm }}
+          tags: ${{ join(matrix.data.tags, ',') }}
