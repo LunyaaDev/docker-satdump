@@ -5,8 +5,7 @@ WORKDIR /build
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends curl ca-certificates
 
 # Define build arguments for each platform
 ARG BUILDPLATFORM
