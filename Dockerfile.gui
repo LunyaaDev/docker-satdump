@@ -1,5 +1,5 @@
 # Ubuntu 24
-FROM ghcr.io/linuxserver/baseimage-selkies:ubuntunoble
+FROM --platform=$BUILDPLATFORM ghcr.io/linuxserver/baseimage-selkies:ubuntunoble
 ENV DEBIAN_FRONTEND=noninteractive
 
 # title
