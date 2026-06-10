@@ -1,5 +1,11 @@
-FROM --platform=$BUILDPLATFORM ubuntu:24.04
+# Ubuntu 24
+FROM ghcr.io/linuxserver/baseimage-selkies:ubuntunoble
 ENV DEBIAN_FRONTEND=noninteractive
+
+# title
+ENV TITLE=Satdump
+ENV PIXELFLUX_WAYLAND=true
+ENV CUSTOM_PORT=8081
 
 WORKDIR /build
 
@@ -21,11 +27,18 @@ RUN if [ "${BUILDPLATFORM}" = "linux/amd64" ]; then \
     else \
       echo "Unsupported platform: ${BUILDPLATFORM}" && exit 1; \
     fi && \
-    apt-get install -y --no-install-recommends ./satdump.deb && \
-    rm satdump.deb
+    apt-get install -y ./satdump.deb && \
+    rm satdump.deb 
 
 # Clean up apt cache again
-RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["satdump"]
-CMD ["autotrack", "/config/autotrack.json"]
+  
+
+COPY /gui-root /
+
+RUN curl -o /usr/share/selkies/www/icon.png https://www.satdump.org/assets/icon.png && \
+    mkdir -p /output && \
+    chown -R 911:911 /output && \
+    chmod +x /etc/cont-init.d/*

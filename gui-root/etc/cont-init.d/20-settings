@@ -1,0 +1,4 @@
+# Copy satdump config if non existent
+mkdir -p /config/.config/satdump/
+test ! -f "/config/.config/satdump/settings.json" && cp /defaults/settings.json "/config/.config/satdump/settings.json"
+chown 911:911 "/config/.config/satdump/settings.json"

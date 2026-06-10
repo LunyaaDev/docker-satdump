@@ -37,6 +37,7 @@ jobs:
       matrix:
         data: ${{fromJson(needs.generate-matrix.outputs.matrix)}}
     if: needs.generate-matrix.outputs.matrix != '[]'
+    name: Satdump ${{ matrix.data.type }} ${{ matrix.data.version }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -56,6 +57,7 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          file: ${{ matrix.data.dockerfile }}
           build-args: |
             SATDUMP_VERSION=${{ matrix.data.version }}
             SATDUMP_RELEASE_FILE_AMD64=${{ matrix.data.release_file_amd }}

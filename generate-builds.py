@@ -7,20 +7,21 @@ from datetime import datetime
 from datetime import timezone
 
 
-source_registry = "satdump"
+source_user = "satdump"
 source_repository = "satdump"
 
-target_registry = "lunyaadev"
-target_repository = "satdump"
+target_user = "lunyaadev"
+target_repository_cli = "satdump"
+target_repository_gui = "satdump-gui"
 
 only_newer_than = datetime(2024, 10, 1, tzinfo=timezone.utc)
 
 
-def get_docker_tags(registry="library", repository=None, search=None):
+def get_docker_tags(user="library", repository=None, search=None):
     if not repository:
         raise Exception("repository needs to be set")
 
-    nextUrl = f"https://registry.hub.docker.com/v2/namespaces/{registry}/repositories/{repository}/tags?page=1&page_size=1000"
+    nextUrl = f"https://registry.hub.docker.com/v2/namespaces/{user}/repositories/{repository}/tags?page=1&page_size=1000"
     if search:
         nextUrl += f"&{urllib.parse.urlencode({'name': search})}"
     images = []
@@ -35,11 +36,11 @@ def get_docker_tags(registry="library", repository=None, search=None):
     return images
 
 
-def get_github_releases(registry="library", repository=None):
-    if not repository:
+def get_github_releases(user=None, repository=None):
+    if not user or not repository:
         raise Exception("repository needs to be set")
 
-    url = f"https://api.github.com/repos/{registry}/{repository}/releases"
+    url = f"https://api.github.com/repos/{user}/{repository}/releases"
     try:
         res = requests.get(url)
         data = res.json()
@@ -48,9 +49,10 @@ def get_github_releases(registry="library", repository=None):
         return []
 
 
+source_releases = get_github_releases(source_user, source_repository)
+target_tags_cli = get_docker_tags(target_user, target_repository_cli)
+target_tags_gui = get_docker_tags(target_user, target_repository_gui)
 
-source_releases = get_github_releases(source_registry, source_repository)
-target_tags = get_docker_tags(target_registry, target_repository)
 commit_hash = os.environ.get("GITHUB_SHA", "")
 commit_hash_short = commit_hash[:7] or "unknown"
 
@@ -59,11 +61,10 @@ build_list = []
 is_latest = True
 
 for source_release in source_releases:
-
+    # skip releases older than `only_newer_than`
     last_pushed_source = dateutil.parser.parse(source_release["updated_at"])
     if last_pushed_source.tzinfo is None:
         last_pushed_source = last_pushed_source.replace(tzinfo=timezone.utc)
-
     if last_pushed_source < only_newer_than:
         continue
 
@@ -72,42 +73,47 @@ for source_release in source_releases:
     release_file_amd = ''
     release_file_arm = ''
 
-    base_tag = target_registry + '/' + target_repository
-
     if source_release["tag_name"] == 'nightly':
         tags = [
-            base_tag + ':nightly-' + day + '-' + commit_hash_short,
-            base_tag + ':nightly-' + day,
-            base_tag + ':nightly',
+            'nightly-' + day + '-' + commit_hash_short,
+            'nightly-' + day,
+            'nightly',
         ]
         release_file_amd = 'satdump_ubuntu_24.04_amd64.deb'
         release_file_arm = 'satdump_rpi64_latest_arm64.deb'
     else:
         tags = [
-            base_tag + ':' + source_release["tag_name"] + '-' + commit_hash_short,
-            base_tag + ':' + source_release["tag_name"],
+            source_release["tag_name"] + '-' + commit_hash_short,
+            source_release["tag_name"],
         ]
         if is_latest:
-            tags.append(base_tag + ':latest')
+            tags.append('latest')
         # reset is latest to not add "latest" to next release
         is_latest = False
         release_file_amd = 'satdump_' + source_release["tag_name"] + '_ubuntu_24.04_amd64.deb'
         release_file_arm = 'satdump_' + source_release["tag_name"] + '_arm64.deb'
     
+    # add cli if not published
+    if not any(target_tag["name"] == tags[0] for target_tag in target_tags_cli):
+        build_list.append({
+            "tags": [target_user + '/' + target_repository_cli + ':' + tag for tag in tags],
+            "dockerfile": "Dockerfile",
+            "type": 'CLI',
+            "version": source_release["tag_name"],
+            "release_file_amd": release_file_amd,
+            "release_file_arm": release_file_arm,
+        })
 
-    # skip if already published
-    if any(target_tag.get("name") == tags[0] for target_tag in target_tags):
-        continue
-
-
-
-    build_list.append({
-        "tags": tags,
-        "version": source_release["tag_name"],
-        "release_file_amd": release_file_amd,
-        "release_file_arm": release_file_arm,
-    })
-
+    # add gui if not published
+    if not any(target_tag["name"] == tags[0] for target_tag in target_tags_gui):
+        build_list.append({
+            "tags": [target_user + '/' + target_repository_gui + ':' + tag for tag in tags],
+            "dockerfile": "Dockerfile.gui",
+            "type": 'GUI',
+            "version": source_release["tag_name"],
+            "release_file_amd": release_file_amd,
+            "release_file_arm": release_file_arm,
+        })
 
 print(
     json.dumps(

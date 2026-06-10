@@ -1,0 +1,22 @@
+{
+  "satdump_directories": {
+    "recording_path": {
+      "value": "/output/baseband"
+    },
+    "live_processing_path": {
+      "value": "/output/processed"
+    },
+    "default_input_directory": {
+      "value": "/output/input"
+    },
+    "default_output_directory": {
+      "value": "/output/output"
+    },
+    "default_image_output_directory": {
+      "value": "/output/img"
+    },
+    "default_projection_output_directory": {
+      "value": "/output/proj"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+mkdir -p /output/baseband \
+         /output/processed \
+         /output/input \
+         /output/output \
+         /output/img \
+         /output/proj

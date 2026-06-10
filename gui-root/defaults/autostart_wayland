@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/usr/bin/satdump-ui --start_recorder_device --engage_autotrack
